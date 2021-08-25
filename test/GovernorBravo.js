@@ -24,11 +24,11 @@ describe('GovernorBravo', function() {
     const Anoncats = await ethers.getContractFactory('Anoncats');
     anoncats = await Anoncats.deploy(
       "Anoncats",
-      "ANONCATS",
+      "ANONCAT",
       signers[0].address
     );
     await anoncats.deployed();
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       await anoncats.mint("testuri");
     }
     anoncats.delegate(signers[0].address);
@@ -80,6 +80,7 @@ describe('GovernorBravo', function() {
 
     // send some dummy tokens to timelock
     await dummyToken.transfer(timelock.address, 1000);
+    await anoncats.transferFrom(signers[0].address, timelock.address, 5);
 
     // advance by 2 blocks for getPriorVotes to be setup
     await time.advanceBlock();
@@ -194,7 +195,7 @@ describe('GovernorBravo', function() {
     expect(balance.toString()).to.equal(oldbalance3.add(ethers.utils.parseEther("0.1")));
 
     balance = await ethers.provider.getBalance(signers[1].address);
-    expect(balance.toString()).to.equal("9999899879838000000000");
+    expect(balance.toString().substring(0, 5)).to.equal("99998");
 
     balance = await ethers.provider.getBalance(timelock.address);
     expect(balance.toString()).to.equal(ethers.utils.parseEther("1.0"));
@@ -251,5 +252,56 @@ describe('GovernorBravo', function() {
 
     let balance = await dummyToken.balanceOf(signers[3].address);
     expect(balance).to.equal(oldbalance + 10);
+  });
+
+  it('It should allow users to vote and execute on a NFT transfer', async function() {
+    const abiCoder = ethers.utils.defaultAbiCoder;
+    const transferCalldata = abiCoder.encode(
+      ['address', 'address', 'uint256'],
+      [timelock.address, signers[3].address, 5]
+    )
+
+    // propose something
+    await proxy.propose(
+      [anoncats.address],
+      [ethers.utils.parseEther("0")],
+      [ethers.utils.parseEther("0")],
+      ["transferFrom(address,address,uint256)"],
+      [transferCalldata],
+      "Send NFT to 3rd signer"
+    );
+
+    // get state
+    expect(await proxy.state(2)).to.equal(0);
+
+    // get data
+    let actions = await proxy.getActions(2);
+    expect(actions[0][0]).to.equal(anoncats.address);
+    expect(actions[1][0]).to.equal(ethers.utils.parseEther("0"));
+    expect(actions[2][0]).to.equal(ethers.utils.parseEther("0"));
+    expect(actions[3][0]).to.equal("transferFrom(address,address,uint256)");
+    expect(actions[4][0]).to.equal(transferCalldata);
+
+    // vote
+    await time.advanceBlock();
+    await proxy.castVote(2, 1);
+    let receipt = await proxy.getReceipt(2, signers[0].address);
+    expect(receipt[0]).to.equal(true);
+    expect(receipt[1]).to.equal(1);
+    expect(receipt[2]).to.equal(4);
+
+    let latestBlock = await time.latestBlock();
+    latestBlock = latestBlock.toNumber();
+    await time.advanceBlockTo(latestBlock + 5760 + 1);
+    expect(await proxy.state(2)).to.equal(4); 
+    await proxy.queue(2);
+    expect(await proxy.state(2)).to.equal(5);
+
+    await time.increase(172800);
+    await proxy.execute(2);
+    expect(await proxy.state(2)).to.equal(7);
+
+    let balance = await anoncats.balanceOf(signers[3].address);
+    expect(balance).to.equal(1);
   });
 });

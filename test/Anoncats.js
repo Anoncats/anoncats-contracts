@@ -1,5 +1,6 @@
 const { expect } = require('chai');
 const { ethers } = require('hardhat');
+const { time } = require("@openzeppelin/test-helpers");
 
 describe('Anoncats', function() {
   let anoncats;
@@ -11,7 +12,7 @@ describe('Anoncats', function() {
     const Anoncats = await ethers.getContractFactory('Anoncats');
     anoncats = await Anoncats.deploy(
       "Anoncats",
-      "ANONCATS",
+      "ANONCAT",
       signers[0].address
     );
     await anoncats.deployed();
@@ -20,7 +21,7 @@ describe('Anoncats', function() {
   it('It should display name and symbol correctly', async function() {
     // Sanity check to see if everything is working properly
     expect(await anoncats.name()).to.equal('Anoncats');
-    expect(await anoncats.symbol()).to.equal('ANONCATS');
+    expect(await anoncats.symbol()).to.equal('ANONCAT');
   });
 
   it('It should display the owner correctly', async function() {
@@ -130,5 +131,141 @@ describe('Anoncats', function() {
     priorVotes = await anoncats.getPriorVotes(signers[1].address, blockNumber - 1);
     expect(currentVotes.toString()).to.equal("1");
     expect(priorVotes.toString()).to.equal("1");
+  });
+
+  it('It should show the right number of delegated votes', async function () {
+    await anoncats.mint('testuri');
+    let currentVotes = await anoncats.getCurrentVotes(signers[0].address);
+    let blockNumber = await ethers.provider.getBlockNumber();
+    let priorVotes = await anoncats.getPriorVotes(signers[0].address, blockNumber - 1);
+    expect(currentVotes.toString()).to.equal("0");
+    expect(priorVotes.toString()).to.equal("0");
+
+    await anoncats.delegate(signers[0].address);
+
+    await anoncats.mint('testuri');
+    currentVotes = await anoncats.getCurrentVotes(signers[0].address);
+    blockNumber = await ethers.provider.getBlockNumber();
+    priorVotes = await anoncats.getPriorVotes(signers[0].address, blockNumber - 1);
+    expect(currentVotes.toString()).to.equal("2");
+    expect(priorVotes.toString()).to.equal("1");
+
+    await anoncats.mint('testuri');
+    currentVotes = await anoncats.getCurrentVotes(signers[0].address);
+    blockNumber = await ethers.provider.getBlockNumber();
+    priorVotes = await anoncats.getPriorVotes(signers[0].address, blockNumber - 1);
+    expect(currentVotes.toString()).to.equal("3");
+    expect(priorVotes.toString()).to.equal("2");
+
+    await anoncats.mint('testuri');
+    currentVotes = await anoncats.getCurrentVotes(signers[0].address);
+    blockNumber = await ethers.provider.getBlockNumber();
+    priorVotes = await anoncats.getPriorVotes(signers[0].address, blockNumber - 1);
+    expect(currentVotes.toString()).to.equal("4");
+    expect(priorVotes.toString()).to.equal("3");
+
+    await anoncats.transferFrom(signers[0].address, signers[1].address, 1);
+    currentVotes = await anoncats.getCurrentVotes(signers[0].address);
+    blockNumber = await ethers.provider.getBlockNumber();
+    priorVotes = await anoncats.getPriorVotes(signers[0].address, blockNumber - 1);
+    expect(currentVotes.toString()).to.equal("3");
+    expect(priorVotes.toString()).to.equal("4");
+    currentVotes = await anoncats.getCurrentVotes(signers[1].address);
+    blockNumber = await ethers.provider.getBlockNumber();
+    priorVotes = await anoncats.getPriorVotes(signers[1].address, blockNumber - 1);
+    expect(currentVotes.toString()).to.equal("0");
+    expect(priorVotes.toString()).to.equal("0");
+    await anoncats.connect(signers[1]).delegate(signers[1].address);
+    currentVotes = await anoncats.getCurrentVotes(signers[1].address);
+    blockNumber = await ethers.provider.getBlockNumber();
+    priorVotes = await anoncats.getPriorVotes(signers[1].address, blockNumber - 1);
+    expect(currentVotes.toString()).to.equal("1");
+    expect(priorVotes.toString()).to.equal("0");
+
+    await anoncats.transferFrom(signers[0].address, signers[1].address, 2);
+    currentVotes = await anoncats.getCurrentVotes(signers[0].address);
+    blockNumber = await ethers.provider.getBlockNumber();
+    priorVotes = await anoncats.getPriorVotes(signers[0].address, blockNumber - 1);
+    expect(currentVotes.toString()).to.equal("2");
+    expect(priorVotes.toString()).to.equal("3");
+    currentVotes = await anoncats.getCurrentVotes(signers[1].address);
+    blockNumber = await ethers.provider.getBlockNumber();
+    priorVotes = await anoncats.getPriorVotes(signers[1].address, blockNumber - 1);
+    expect(currentVotes.toString()).to.equal("2");
+    expect(priorVotes.toString()).to.equal("1");
+
+    await anoncats.transferFrom(signers[0].address, signers[1].address, 3);
+    currentVotes = await anoncats.getCurrentVotes(signers[0].address);
+    blockNumber = await ethers.provider.getBlockNumber();
+    priorVotes = await anoncats.getPriorVotes(signers[0].address, blockNumber - 1);
+    expect(currentVotes.toString()).to.equal("1");
+    expect(priorVotes.toString()).to.equal("2");
+    currentVotes = await anoncats.getCurrentVotes(signers[1].address);
+    blockNumber = await ethers.provider.getBlockNumber();
+    priorVotes = await anoncats.getPriorVotes(signers[1].address, blockNumber - 1);
+    expect(currentVotes.toString()).to.equal("3");
+    expect(priorVotes.toString()).to.equal("2");
+
+    await anoncats.transferFrom(signers[0].address, signers[1].address, 4);
+    currentVotes = await anoncats.getCurrentVotes(signers[0].address);
+    blockNumber = await ethers.provider.getBlockNumber();
+    priorVotes = await anoncats.getPriorVotes(signers[0].address, blockNumber - 1);
+    expect(currentVotes.toString()).to.equal("0");
+    expect(priorVotes.toString()).to.equal("1");
+    currentVotes = await anoncats.getCurrentVotes(signers[1].address);
+    blockNumber = await ethers.provider.getBlockNumber();
+    priorVotes = await anoncats.getPriorVotes(signers[1].address, blockNumber - 1);
+    expect(currentVotes.toString()).to.equal("4");
+    expect(priorVotes.toString()).to.equal("3");
+  });
+
+  it('It should only allow the creator to set URI when in possession of NFT', async function() {
+    await anoncats.mint('testuri');
+    let currentVotes = await anoncats.getCurrentVotes(signers[0].address);
+    let blockNumber = await ethers.provider.getBlockNumber();
+    let priorVotes = await anoncats.getPriorVotes(signers[0].address, blockNumber - 1);
+    expect(currentVotes.toString()).to.equal("0");
+    expect(priorVotes.toString()).to.equal("0");
+
+    let domain = {
+      name: "Anoncats",
+      chainId: 31337,  // for testing on hardhat
+      verifyingContract: anoncats.address,
+    }
+
+    let types = {
+      Delegation: [
+        {name: 'delegatee', type: 'address'},
+        {name: 'nonce', type: 'uint256'},
+        {name: 'expiry', type: 'uint256'},
+      ]
+    }
+
+    let timeNow = await time.latest();
+    expiry = ethers.BigNumber.from(timeNow.toString()).add(10);
+
+    let values = {
+      delegatee: signers[0].address,
+      nonce: 0,
+      expiry: expiry
+    }
+
+    let signature = await signers[0]._signTypedData(domain, types, values);
+    signature = signature.substring(2);
+    let r = '0x' + signature.substring(0,64);
+    let s = '0x' + signature.substring(64,128);
+    let v = parseInt(signature.substring(128,130), 16);
+
+    await anoncats.delegateBySig(
+      signers[0].address,
+      0,
+      expiry,
+      v, r, s);
+
+    currentVotes = await anoncats.getCurrentVotes(signers[0].address);
+    blockNumber = await ethers.provider.getBlockNumber();
+    priorVotes = await anoncats.getPriorVotes(signers[0].address, blockNumber - 1);
+    expect(currentVotes.toString()).to.equal("1");
+    expect(priorVotes.toString()).to.equal("0");
   });
 });

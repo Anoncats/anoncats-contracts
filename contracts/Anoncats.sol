@@ -77,6 +77,9 @@ contract Anoncats is Context, ERC165, IERC721, IERC721Metadata, IERC721Enumerabl
     // An event thats emitted when a delegate account's vote balance changes
     event DelegateVotesChanged(address indexed delegate, uint previousBalance, uint newBalance);
 
+    // A record of states for signing / validating signatures
+    mapping (address => uint) public nonces;
+
     /*
      *     bytes4(keccak256('balanceOf(address)')) == 0x70a08231
      *     bytes4(keccak256('ownerOf(uint256)')) == 0x6352211e
@@ -110,6 +113,12 @@ contract Anoncats is Context, ERC165, IERC721, IERC721Metadata, IERC721Enumerabl
      *     => 0x18160ddd ^ 0x2f745c59 ^ 0x4f6ccce7 == 0x780e9d63
      */
     bytes4 private constant _INTERFACE_ID_ERC721_ENUMERABLE = 0x780e9d63;
+
+    // The EIP-712 typehash for the contract's domain
+    bytes32 public constant DOMAIN_TYPEHASH = keccak256("EIP712Domain(string name,uint256 chainId,address verifyingContract)");
+
+    // The EIP-712 typehash for the delegation struct used by the contract
+    bytes32 public constant DELEGATION_TYPEHASH = keccak256("Delegation(address delegatee,uint256 nonce,uint256 expiry)");
 
     /**
      * @dev Initializes the contract by setting a `name` and a `symbol` to the token collection.
@@ -356,13 +365,31 @@ contract Anoncats is Context, ERC165, IERC721, IERC721Metadata, IERC721Enumerabl
 
     /**
      * @dev Delegate votes from `_msgSender()` to `delegatee`
-     * @param delegatee The address to delegate votes to
      */
     function delegate(address delegatee) public {
         require(delegatee != address(0), "Anoncats: cannot delegate to 0 address");
         return _delegate(_msgSender(), delegatee);
     }
 
+    /**
+     * @notice Delegates votes from signatory to `delegatee`
+     * @param delegatee The address to delegate votes to
+     * @param nonce The contract state required to match the signature
+     * @param expiry The time at which to expire the signature
+     * @param v The recovery byte of the signature
+     * @param r Half of the ECDSA signature pair
+     * @param s Half of the ECDSA signature pair
+     */
+    function delegateBySig(address delegatee, uint nonce, uint expiry, uint8 v, bytes32 r, bytes32 s) public {
+        bytes32 domainSeparator = keccak256(abi.encode(DOMAIN_TYPEHASH, keccak256(bytes(_name)), getChainId(), address(this)));
+        bytes32 structHash = keccak256(abi.encode(DELEGATION_TYPEHASH, delegatee, nonce, expiry));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
+        address signatory = ecrecover(digest, v, r, s);
+        require(signatory != address(0), "Anoncats: invalid signature");
+        require(nonce == nonces[signatory]++, "Anoncats: invalid nonce");
+        require(block.timestamp <= expiry, "Anoncats: signature expired");
+        return _delegate(signatory, delegatee);
+    }
 
     /**
      * @dev Safely transfers `tokenId` token from `from` to `to`, checking first that contract recipients
@@ -597,5 +624,11 @@ contract Anoncats is Context, ERC165, IERC721, IERC721Metadata, IERC721Enumerabl
     function toUint64(uint256 value) internal pure returns (uint64) {
         require(value < 2**64, "SafeCast: value doesn\'t fit in 64 bits");
         return uint64(value);
+    }
+
+    function getChainId() public pure returns (uint) {
+        uint256 chainId;
+        assembly { chainId := chainid() }
+        return chainId;
     }
 }

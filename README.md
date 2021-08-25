@@ -9,6 +9,15 @@ For simplicity, each ERC721 are given equal vote weights.
 
 Open zeppelin contracts are used in interfaces and utils folder.
 
+# Deployment Addresses
+## Rinkeby
+```
+Anoncats deployed to: 0xe7141C205a7a74241551dAF007537A041867e0B0
+Timelock deployed to: 0xfF662FEbc210F4ddF03846bA093807CCb8EE034b
+Delegate deployed to: 0x8455e7bDA4E629903165aB029eab18a2360DbA3e
+Delegator deployed to: 0xCCAF310D9506d09806e78EcC52a09029d36Cea57
+```
+
 # Hardhat Readme
 ## Advanced Sample Hardhat Project
 

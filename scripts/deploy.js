@@ -6,20 +6,53 @@
 const hre = require("hardhat");
 
 async function main() {
-  // Hardhat always runs the compile task when running scripts with its command
-  // line interface.
-  //
-  // If this script is run directly using `node` you may want to call compile
-  // manually to make sure everything is compiled
-  // await hre.run('compile');
+  const maintainer = "0x1ce139b73DBC1d855e4B360856aC3885558Fc5F8";
+  const [owner] = await hre.ethers.getSigners();
 
-  // We get the contract to deploy
-  const Greeter = await hre.ethers.getContractFactory("Greeter");
-  const greeter = await Greeter.deploy("Hello, Hardhat!");
+  const Anoncats = await hre.ethers.getContractFactory("Anoncats");
+  anoncats = await Anoncats.deploy(
+    "Anoncats",
+    "ANONCAT",
+    "ar://",
+    maintainer
+  );
+  await anoncats.deployed();
+  console.log("Anoncats deployed to:", anoncats.address);
 
-  await greeter.deployed();
+  // Predetermine GovernorBravoDelegator address
+  // let nonce = await hre.ethers.provider.getTransactionCount(owner);
+  let nonce = await owner.getTransactionCount();
+  let adminAddress = hre.ethers.utils.getContractAddress({
+    from: owner.address,
+    nonce: nonce + 2
+  })
+  console.log("Delegator Address: ", adminAddress);
 
-  console.log("Greeter deployed to:", greeter.address);
+  const Timelock = await hre.ethers.getContractFactory("Timelock");
+  timelock = await Timelock.deploy(
+    adminAddress,
+    172800 // 2 days
+  );
+  await timelock.deployed();
+  console.log("Timelock deployed to:", timelock.address);
+
+  const Delegate = await hre.ethers.getContractFactory("GovernorBravoDelegate");
+  delegate = await Delegate.deploy();
+  await delegate.deployed();
+  console.log("Delegate deployed to:", delegate.address);
+
+  const Delegator = await hre.ethers.getContractFactory("GovernorBravoDelegator");
+  delegator = await Delegator.deploy(
+    timelock.address,
+    anoncats.address,
+    maintainer,
+    delegate.address,
+    5760, // min voting period, in terms of number of blocks, this is around 22-24 hours
+    1,  // min voting delay, in terms of number of blocks, this is around 14 seconds
+    1,  // one anoncat proposal threshold
+  );
+  await delegator.deployed();  
+  console.log("Delegator deployed to:", delegator.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
