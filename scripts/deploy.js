@@ -13,7 +13,6 @@ async function main() {
   anoncats = await Anoncats.deploy(
     "Anoncats",
     "ANONCAT",
-    "ar://",
     maintainer
   );
   await anoncats.deployed();

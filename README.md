@@ -10,7 +10,7 @@ For simplicity, each ERC721 are given equal vote weights.
 Open zeppelin contracts are used in interfaces and utils folder.
 
 # Deployment Addresses
-## Rinkeby
+**Addresses are same on both Rinkeby and Mainnet**
 ```
 Anoncats deployed to: 0xe7141C205a7a74241551dAF007537A041867e0B0
 Timelock deployed to: 0xfF662FEbc210F4ddF03846bA093807CCb8EE034b
