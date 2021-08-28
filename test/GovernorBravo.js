@@ -31,7 +31,7 @@ describe('GovernorBravo', function() {
     for (let i = 0; i < 5; i++) {
       await anoncats.mint("testuri");
     }
-    anoncats.delegate(signers[0].address);
+    await anoncats.delegate(signers[0].address);
 
     // Predetermine GovernorBravoDelegator address
     let nonce = await ethers.provider.getTransactionCount(signers[0].address);
